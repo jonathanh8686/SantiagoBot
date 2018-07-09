@@ -36,6 +36,9 @@ namespace Santiago
             Console.ForegroundColor = ConsoleColor.White;
             var ai = new AI();
 
+            Players.Add("santiago");
+            PlayerTeams.Add("santiago", "Blue");
+
             for (int i = 2; i <= 6; i++)
             {
                 Console.WriteLine($"What is player {i}'s name?");
@@ -58,7 +61,15 @@ namespace Santiago
             Game game = new Game();
 
             Console.WriteLine("Who's turn it is?");
-            game.PlayerTurn = Console.ReadLine()?.ToLower();
+
+            var inpPlayerTurn = Console.ReadLine()?.ToLower();
+            while (!Players.Contains(inpPlayerTurn))
+            {
+                Utility.Alert($"{inpPlayerTurn} is not a player! Please enter a valid player name.");
+                inpPlayerTurn = Console.ReadLine();
+            }
+
+            game.PlayerTurn = inpPlayerTurn;
 
             while (!game.GameOver)
             {
@@ -68,15 +79,11 @@ namespace Santiago
                     Console.WriteLine($"{game.PlayerTurn}'s turn! What move did they make?");
                     var moveData = Console.ReadLine()?.Split(" ");
 
-                    if (moveData != null)
-                        for (var i = 0; i < moveData.Length; i++)
-                            moveData[i] = moveData[i].ToLower();
-
                     if (moveData?[0] == "call") // ["call", HalfSuit, Result]
                     {
                         // Halfsuit Called
                         var res = moveData[2] == "hit" ? CallResult.Hit : CallResult.Miss;
-                        var sc = new SuitCall(moveData[1], PlayerTeams[game.PlayerTurn], game.PlayerTurn, res);
+                        var sc = new SuitCall(moveData[1].ToUpper(), PlayerTeams[game.PlayerTurn], game.PlayerTurn, res);
                         game.ProcessMove(sc);
                         ai.ProcessMove(sc);
                     }
@@ -84,7 +91,7 @@ namespace Santiago
                     {
                         // Card Called
                         var res = moveData?[2] == "hit" ? CallResult.Hit : CallResult.Miss;
-                        var cc = new CardCall(moveData?[0], game.PlayerTurn, moveData?[1], res);
+                        var cc = new CardCall(moveData?[0].ToLower(), game.PlayerTurn, moveData?[1], res);
                         game.ProcessMove(cc);
                         ai.ProcessMove(cc);
                     }
@@ -93,6 +100,18 @@ namespace Santiago
                 else
                 {
                     // Make a move
+                    // ReSharper disable once InconsistentNaming
+                    var AIMove = ai.MakeMove(game);
+                    Utility.PrintCardCall(AIMove);
+                    Console.WriteLine("Result of Santiago's move? Hit/Miss");
+                    var resString = Console.ReadLine()?.ToLower();
+
+                    AIMove.Result = resString == "hit" ? CallResult.Hit : CallResult.Miss;
+
+                    ai.ProcessMove(AIMove);
+                    Utility.PrintCardCall(AIMove);
+                    game.ProcessMove(AIMove);
+
                 }
             }
 

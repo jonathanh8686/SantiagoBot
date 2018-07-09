@@ -32,7 +32,7 @@ namespace Santiago
 
         #region Variable Parameters
 
-        // TODO: Genetic training to optimization these variables
+        // TODO: Genetic Optimization?
         private double minProbabilityThreshold = 0.5;
         private double minHaveSuitThreshold = 0.0;
 
@@ -44,6 +44,7 @@ namespace Santiago
         private readonly string[] CardNames;
         private readonly Dictionary<string, string[]> HalfSuits;
         private readonly List<string> Players;
+        private readonly Dictionary<string, string> PlayerTeams;
 
 
         /// <summary>
@@ -58,6 +59,7 @@ namespace Santiago
             CardNames = Program.CardNames;
             HalfSuits = Program.HalfSuits;
             Players = Program.Players;
+            PlayerTeams = Program.PlayerTeams;
 
 
             // TODO: Support not 6 player games
@@ -65,15 +67,26 @@ namespace Santiago
 
             // Initalize Probabilities
             for (var i = 0; i < cardProbability.Length; i++)
+            {
                 cardProbability[i] = new double[54]; // The probablity of each card will be saved
+                for (int j = 0; j < cardProbability[i].Length; j++)
+                    cardProbability[i][j] = 0.2;
+            }
 
             // Initalize Halfsuit information
             for (var i = 0; i < 6; i++)
-                haveHalfSuit[i] = new int[7];
+                haveHalfSuit[i] = new int[9];
 
             InitalizeHand(); // Get Santiago's hand
             foreach (var cardNum in hand)
+            {
                 cardProbability[0][cardNum] = 1.0f; // Santiago must have these cards
+                for (int i = 0; i < HalfSuits.Values.Count; i++)
+                {
+                    if (HalfSuits.Values.ToArray()[i].Contains(NumberCard[cardNum]))
+                        haveHalfSuit[0][i]++;
+                }
+            }
         }
 
         /// <summary>
@@ -143,13 +156,15 @@ namespace Santiago
         public CardCall MakeMove(Game gameState)
         {
             var bestCardCall = new CardCall();
+            bestCardCall.Result = CallResult.Unknown;
+            bestCardCall.SenderName = "santiago";
+
             var possibleCards = GetPossibleCards();
 
             var bmProbability = GetProbabilityMove(possibleCards, out var foundMove);
             if (foundMove)
             {
                 bestCardCall.CardRequested = bmProbability.CardName;
-                bestCardCall.SenderName = "santiago";
                 bestCardCall.TargetName = bmProbability.TargetName;
 
                 return bestCardCall;
@@ -159,7 +174,6 @@ namespace Santiago
             if (foundMove)
             {
                 bestCardCall.CardRequested = bmHaveSuit.CardName;
-                bestCardCall.SenderName = "santiago";
                 bestCardCall.TargetName = bmHaveSuit.TargetName;
 
                 return bestCardCall;
@@ -182,8 +196,8 @@ namespace Santiago
                     // go through each halfsuit
                     if (haveHalfSuit[i][j] > minCardsFound)
                     {
-                        bestHalfSuitIndex = i;
-                        bestPlayerID = j;
+                        bestHalfSuitIndex = j;
+                        bestPlayerID = i;
                         minCardsFound = haveHalfSuit[i][j];
                     }
                 }
@@ -193,9 +207,11 @@ namespace Santiago
             for (var j = 0; j < HalfSuits.Values.ToArray()[bestHalfSuitIndex].Length; j++)
             {
                 var cardIdNum = CardIndex[HalfSuits.Values.ToArray()[bestHalfSuitIndex][j]];
-
+                // TODO: don't just start from the highest of the cards and pick that one
                 if (!(cardProbability[bestPlayerID][cardIdNum] > bestCardProbability)) continue;
                 if (cardProbability[bestPlayerID][cardIdNum] < minHaveSuitThreshold) continue;
+                if (!possibleCards.Contains(cardIdNum)) continue;
+                if (PlayerTeams[Players[bestPlayerID]] == PlayerTeams["santiago"]) continue;
 
                 foundMove = true;
 
@@ -213,14 +229,16 @@ namespace Santiago
         }
         private CandidateMove GetProbabilityMove(List<int> possibleCards, out bool foundMove)
         {
+            // TODO: if there are several cards with equal probability randomize the card to choose
             CandidateMove bmProbability = new CandidateMove();
             foundMove = false;
             for (var i = 0; i < possibleCards.Count; i++)
             {
-                for (var j = 0; j < cardProbability.Length; j++)
+                for (var j = 1; j < cardProbability.Length; j++)
                 {
-                    if (!(cardProbability[j][i] > bmProbability.HitProbability)) continue;
-                    if (cardProbability[j][i] < minProbabilityThreshold) continue;
+                    if (!(cardProbability[j][possibleCards[i]] > bmProbability.HitProbability)) continue;
+                    if (cardProbability[j][possibleCards[i]] < minProbabilityThreshold) continue;
+                    if (PlayerTeams[Players[j]] == PlayerTeams["santiago"]) continue;
 
                     foundMove = true;
                     bmProbability.TargetId = j;
@@ -229,7 +247,7 @@ namespace Santiago
                     bmProbability.SenderName = "santiago";
                     bmProbability.CardId = possibleCards[i];
                     bmProbability.CardName = NumberCard[possibleCards[i]];
-                    bmProbability.HitProbability = cardProbability[j][i];
+                    bmProbability.HitProbability = cardProbability[j][possibleCards[i]];
                 }
             } // loop through all possible cards and find where the highest probability is
 
@@ -270,6 +288,11 @@ namespace Santiago
         {
             if (cc.Result == CallResult.Hit)
             {
+                if (cc.TargetName == "santiago")
+                    hand.Remove(CardIndex[cc.CardRequested]);
+                if(cc.SenderName == "santiago")
+                    hand.Add(CardIndex[cc.CardRequested]);
+
                 for (int i = 0; i < 6; i++)
                 {
                     if (i == Players.IndexOf(cc.SenderName))

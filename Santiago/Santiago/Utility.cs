@@ -26,6 +26,17 @@ namespace Santiago
             Console.WriteLine($"ERROR - {DateTime.Now:T}: {logMessage}");
             Console.ForegroundColor = ConsoleColor.White;
         }
+
+        public static void PrintCardCall(CardCall cc)
+        {
+            var strResult = "";
+            if (cc.Result == CallResult.Unknown) strResult = "Unknown...";
+            else strResult = cc.Result == CallResult.Hit ? "Hit!" : "Miss!";
+
+            Console.ForegroundColor = ConsoleColor.DarkCyan;
+            Console.WriteLine($"{cc.SenderName} called {cc.CardRequested} from {cc.TargetName} and it was a {strResult}");
+            Console.ForegroundColor = ConsoleColor.White;
+        }
            
     }
 }
