@@ -1,11 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
-using System.IO;
 using System.Linq;
-using System.Resources;
-using System.Runtime.InteropServices;
-using System.Text;
 
 namespace Santiago
 {
@@ -207,7 +202,7 @@ namespace Santiago
             for (var j = 0; j < HalfSuits.Values.ToArray()[bestHalfSuitIndex].Length; j++)
             {
                 var cardIdNum = CardIndex[HalfSuits.Values.ToArray()[bestHalfSuitIndex][j]];
-                // TODO: don't just start from the highest of the cards and pick that one
+                // TODO: don't just start from the highest of the cards and pick that one (randomize)
                 if (!(cardProbability[bestPlayerID][cardIdNum] > bestCardProbability)) continue;
                 if (cardProbability[bestPlayerID][cardIdNum] < minHaveSuitThreshold) continue;
                 if (!possibleCards.Contains(cardIdNum)) continue;
@@ -331,11 +326,64 @@ namespace Santiago
                     }
                 }
             }
+
+            SuitCall teamSuitCall = CheckTeammateSuitCalls();
+            if (teamSuitCall != null)
+            {
+                Console.WriteLine($"Santiago has called the {teamSuitCall.HalfSuitName}");
+                ProcessMove(teamSuitCall);
+            }
         }
 
+        private SuitCall CheckTeammateSuitCalls()
+        {
+            SuitCall sc = new SuitCall();
+            for (int i = 0; i < HalfSuits.Keys.Count; i++)
+            {
+                int mustHaveOnTeam = 0;
+                for (int j = 0; j < HalfSuits[HalfSuits.Keys.ToArray()[i]].Length; j++)
+                {
+                    for (int k = 0; k < 6; k++)
+                    {
+                        if (PlayerTeams[Players[k]] == PlayerTeams["santiago"])
+                            if (Math.Abs(cardProbability[k][CardIndex[HalfSuits[HalfSuits.Keys.ToArray()[i]][j]]] - 1) < 0.01)
+                                mustHaveOnTeam++;
+                    }
+                }
+
+                if (mustHaveOnTeam == 6)
+                {
+                    // they have all of a halfsuit
+                    sc.Team = PlayerTeams["santiago"];
+                    sc.HalfSuitName = HalfSuits.Keys.ToArray()[i];
+                    sc.SenderName = "santiago";
+
+                    return sc;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Process the suitcall by removing all information about those halfsuits
+        /// </summary>
+        /// <param name="sc">SuitCall made</param>
         public void ProcessMove(SuitCall sc)
         {
+            var halfSuitCalled = HalfSuits[sc.HalfSuitName]; // get the names of the card called
 
+            foreach (var card in halfSuitCalled)
+                hand.Remove(CardIndex[card]);
+
+            foreach (var card in halfSuitCalled)
+            {
+                for (int j = 0; j < 6; j++)
+                {
+                    haveHalfSuit[j][HalfSuits.Keys.ToList().IndexOf(sc.HalfSuitName)] = 0;
+                    cardProbability[j][CardIndex[card]] = 0.0;
+                }
+            }
         }
 
 

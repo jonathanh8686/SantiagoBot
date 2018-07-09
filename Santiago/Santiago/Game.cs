@@ -57,6 +57,16 @@ namespace Santiago
         public void ProcessMove(SuitCall sc)
         {
             moveList.Add(sc);
+            if (sc.Result == CallResult.Hit)
+            {
+                if (sc.Team == "Red") RedTeamScore++;
+                else BlueTeamScore++;
+            }
+            else
+            {
+                if (sc.Team == "Red") BlueTeamScore++;
+                else RedTeamScore++;
+            }
         }
 
         public void ProcessMove(CardCall cc)
