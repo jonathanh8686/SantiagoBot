@@ -79,21 +79,49 @@ namespace Santiago
                     Console.WriteLine($"{game.PlayerTurn}'s turn! What move did they make?");
                     var moveData = Console.ReadLine()?.Split(" ");
 
+
+
                     if (moveData?[0] == "call") // ["call", HalfSuit, Result]
                     {
                         // Halfsuit Called
+                        if (!HalfSuits.ContainsKey(moveData?[1]))
+                        {
+                            Utility.Error("Halfsuit not recognized!");
+                            continue;
+                        }
+                        if (moveData?[2] != "hit" && moveData?[2] != "miss")
+                        {
+                            Utility.Error("Result not recognized!");
+                            continue;
+                        }
+
                         var res = moveData[2] == "hit" ? CallResult.Hit : CallResult.Miss;
                         var sc = new SuitCall(moveData[1].ToUpper(), PlayerTeams[game.PlayerTurn], game.PlayerTurn, res);
                         game.ProcessMove(sc);
                         ai.ProcessMove(sc);
                     }
-                    else // [TargetName, CardName, Result]
+                    else if(Players.Contains(moveData?[0])) // [TargetName, CardName, Result]
                     {
                         // Card Called
+                        if (!CardIndex.ContainsKey(moveData?[1]))
+                        {
+                            Utility.Error("Card not recognized!");
+                            continue;
+                        }
+                        if (moveData?[2] != "hit" && moveData?[2] != "miss")
+                        {
+                            Utility.Error("Result not recognized!");
+                            continue;
+                        }
+
                         var res = moveData?[2] == "hit" ? CallResult.Hit : CallResult.Miss;
                         var cc = new CardCall(moveData?[0].ToLower(), game.PlayerTurn, moveData?[1], res);
                         game.ProcessMove(cc);
                         ai.ProcessMove(cc);
+                    }
+                    else
+                    {
+                        Utility.Error("Invalid command! Calltype not recognized!");
                     }
 
                 }
@@ -109,7 +137,6 @@ namespace Santiago
                     AIMove.Result = resString == "hit" ? CallResult.Hit : CallResult.Miss;
 
                     ai.ProcessMove(AIMove);
-                    Utility.PrintCardCall(AIMove);
                     game.ProcessMove(AIMove);
 
                 }

@@ -22,14 +22,18 @@ namespace Santiago
     class AI
     {
         private double[][] cardProbability = new double[6][];
+        private double[] publicProbability = new double[54];
         private List<int> hand = new List<int>();
         private int[][] haveHalfSuit = new int[6][];
+
 
         #region Variable Parameters
 
         // TODO: Genetic Optimization?
-        private double minProbabilityThreshold = 0.5;
-        private double minHaveSuitThreshold = 0.0;
+        private double minProbabilityThreshold = 0.5; // the minimum probability that a player has a card to call it
+        private double minHaveSuitThreshold = 0.0; // the minimum number of cards they must have the in halfsuit to randomly call it
+        private double riskFactor = 1.0; // TODO: Maybe have seperate riskFactors for each moving module
+        private double minProbabilityCountingThreshold = 0.9; // the minimum (public) probability to consider that card lost if incorrectly called
 
         #endregion
 
@@ -61,12 +65,16 @@ namespace Santiago
             Utility.Log("AI Instance Initalized.");
 
             // Initalize Probabilities
-            for (var i = 0; i < cardProbability.Length; i++)
+            cardProbability[0] = new double[54];
+            for (var i = 1; i < cardProbability.Length; i++)
             {
                 cardProbability[i] = new double[54]; // The probablity of each card will be saved
                 for (int j = 0; j < cardProbability[i].Length; j++)
                     cardProbability[i][j] = 0.2;
             }
+
+            for (var i = 0; i < publicProbability.Length; i++)
+                publicProbability[i] = 0.2;
 
             // Initalize Halfsuit information
             for (var i = 0; i < 6; i++)
@@ -150,9 +158,11 @@ namespace Santiago
         /// <returns></returns>
         public CardCall MakeMove(Game gameState)
         {
-            var bestCardCall = new CardCall();
-            bestCardCall.Result = CallResult.Unknown;
-            bestCardCall.SenderName = "santiago";
+            var bestCardCall = new CardCall
+            {
+                Result = CallResult.Unknown,
+                SenderName = "santiago"
+            };
 
             var possibleCards = GetPossibleCards();
 
@@ -198,15 +208,22 @@ namespace Santiago
                 }
             }
 
+            List<CandidateMove> possibleCardCalls = new List<CandidateMove>();
             var bestCardProbability = 0.0;
             for (var j = 0; j < HalfSuits.Values.ToArray()[bestHalfSuitIndex].Length; j++)
             {
                 var cardIdNum = CardIndex[HalfSuits.Values.ToArray()[bestHalfSuitIndex][j]];
-                // TODO: don't just start from the highest of the cards and pick that one (randomize)
-                if (!(cardProbability[bestPlayerID][cardIdNum] > bestCardProbability)) continue;
+                if (!(cardProbability[bestPlayerID][cardIdNum] >= bestCardProbability)) continue;
                 if (cardProbability[bestPlayerID][cardIdNum] < minHaveSuitThreshold) continue;
                 if (!possibleCards.Contains(cardIdNum)) continue;
                 if (PlayerTeams[Players[bestPlayerID]] == PlayerTeams["santiago"]) continue;
+
+                if (!MoveCostBenefit(new CandidateMove // make sure that the move meets cost-benefit
+                {
+                    TargetName = Players[bestPlayerID],
+                    CardName = NumberCard[cardIdNum]
+                })) continue;
+
 
                 foundMove = true;
 
@@ -218,9 +235,21 @@ namespace Santiago
                 bmMinSuit.SenderName = "santiago";
                 bmMinSuit.TargetId = bestPlayerID;
                 bmMinSuit.TargetName = Players[bestPlayerID];
+
+
+                possibleCardCalls.Add(new CandidateMove()
+                {
+                    CardId = bmMinSuit.CardId,
+                    CardName = bmMinSuit.CardName,
+                    HitProbability = bmMinSuit.HitProbability,
+                    SenderId = bmMinSuit.SenderId,
+                    SenderName = bmMinSuit.SenderName,
+                    TargetId = bmMinSuit.TargetId,
+                    TargetName = bmMinSuit.TargetName
+                });
             }
 
-            return bmMinSuit;
+            return foundMove ? possibleCardCalls[new Random().Next(possibleCardCalls.Count)] : null;
         }
         private CandidateMove GetProbabilityMove(List<int> possibleCards, out bool foundMove)
         {
@@ -234,6 +263,12 @@ namespace Santiago
                     if (!(cardProbability[j][possibleCards[i]] > bmProbability.HitProbability)) continue;
                     if (cardProbability[j][possibleCards[i]] < minProbabilityThreshold) continue;
                     if (PlayerTeams[Players[j]] == PlayerTeams["santiago"]) continue;
+
+                    if (!MoveCostBenefit(new CandidateMove // make sure that the move meets cost-benefit
+                    {
+                        TargetName = Players[j],
+                        CardName = NumberCard[possibleCards[i]]
+                    })) continue;
 
                     foundMove = true;
                     bmProbability.TargetId = j;
@@ -285,10 +320,10 @@ namespace Santiago
             {
                 if (cc.TargetName == "santiago")
                     hand.Remove(CardIndex[cc.CardRequested]);
-                if(cc.SenderName == "santiago")
+                if (cc.SenderName == "santiago")
                     hand.Add(CardIndex[cc.CardRequested]);
 
-                for (int i = 0; i < 6; i++)
+                for (var i = 0; i < 6; i++)
                 {
                     if (i == Players.IndexOf(cc.SenderName))
                     {
@@ -312,7 +347,7 @@ namespace Santiago
             }
             else if (cc.Result == CallResult.Miss)
             {
-                for (int i = 0; i < 6; i++)
+                for (var i = 0; i < 6; i++)
                 {
                     if (i == Players.IndexOf(cc.SenderName) || i == Players.IndexOf(cc.TargetName))
                     {
@@ -322,17 +357,30 @@ namespace Santiago
                             if (j == i) continue;
                             cardProbability[i][CardIndex[cc.CardRequested]] += spreadProb;
                         }
-                        cardProbability[i][CardIndex[cc.CardRequested]] = 0.0; // He must also have another of the same suit
+                        cardProbability[i][CardIndex[cc.CardRequested]] = 0.0;
                     }
                 }
+
+                // which halfsuit is cardRequested in
+                for (int i = 0; i < HalfSuits.Values.ToArray().Length; i++)
+                {
+                    if (HalfSuits.Values.ToArray()[i].Contains(cc.CardRequested))
+                    {
+                        haveHalfSuit[Players.IndexOf(cc.SenderName)][i] =
+                            Math.Max(haveHalfSuit[Players.IndexOf(cc.SenderName)][i], 1);
+                    }
+                }
+
             }
 
-            SuitCall teamSuitCall = CheckTeammateSuitCalls();
+            SuitCall teamSuitCall = CheckTeammateSuitCalls(); // check if you can certainly (kind of) get a suit
             if (teamSuitCall != null)
             {
                 Console.WriteLine($"Santiago has called the {teamSuitCall.HalfSuitName}");
                 ProcessMove(teamSuitCall);
             }
+
+
         }
 
         private SuitCall CheckTeammateSuitCalls()
@@ -386,6 +434,34 @@ namespace Santiago
             }
         }
 
+        private bool MoveCostBenefit(CandidateMove cc)
+        {
+            int hsIndex = -1;
+            for (var i = 0; i < HalfSuits.Keys.Count; i++)
+            {
+                if (!HalfSuits[HalfSuits.Keys.ToList()[i]].Contains(cc.CardName)) continue;
+
+                hsIndex = i;
+                break;
+            }
+
+            return (1.0 - cardProbability[Players.IndexOf(cc.TargetName)][CardIndex[cc.CardName]]) *
+                   CountPossibleLoss(hsIndex) <
+                   cardProbability[Players.IndexOf(cc.TargetName)][CardIndex[cc.CardName]] * riskFactor;
+        }
+
+        private int CountPossibleLoss(int halfSuitID)
+        {
+            var res = 0;
+            string halfSuitName = HalfSuits.Keys.ToArray()[halfSuitID];
+            for (var i = 0; i < HalfSuits[halfSuitName].Length; i++)
+            {
+                if (publicProbability[CardIndex[HalfSuits[halfSuitName][i]]] >= minProbabilityCountingThreshold)
+                    res++;
+            }
+
+            return res;
+        }
 
     }
 }

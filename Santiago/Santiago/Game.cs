@@ -67,6 +67,9 @@ namespace Santiago
                 if (sc.Team == "Red") BlueTeamScore++;
                 else RedTeamScore++;
             }
+
+            if (RedTeamScore + BlueTeamScore >= 9)
+                GameOver = false; // check if the sum of the scores is 9 (call halfsuits have been called)
         }
 
         public void ProcessMove(CardCall cc)
