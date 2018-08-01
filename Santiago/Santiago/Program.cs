@@ -20,17 +20,17 @@ namespace Santiago
             #region Initalize
             // Initalize CardIndex and NumberCard
             CardNames = File.ReadAllLines("CardAssignments.txt");
-            for (int i = 0; i < CardNames.Length; i++)
+            for (var i = 0; i < CardNames.Length; i++)
             {
                 CardIndex.Add(CardNames[i], i); // CardIndex[cardName] = cardNumericalValue
                 NumberCard.Add(i, CardNames[i]);
             }
 
             // Initalize Halfsuits
-            string[] halfSuitNames = File.ReadAllLines("HalfSuitNames.txt");
+            var halfSuitNames = File.ReadAllLines("HalfSuitNames.txt");
 
-            string[] tempHalfSuits = File.ReadAllLines("HalfSuits.txt");
-            for (int i = 0; i < tempHalfSuits.Length; i++)
+            var tempHalfSuits = File.ReadAllLines("HalfSuits.txt");
+            for (var i = 0; i < tempHalfSuits.Length; i++)
                 HalfSuits.Add(halfSuitNames[i], tempHalfSuits[i].Split(','));
 
             Console.ForegroundColor = ConsoleColor.White;
@@ -39,7 +39,7 @@ namespace Santiago
             Players.Add("santiago");
             PlayerTeams.Add("santiago", "Blue");
 
-            for (int i = 2; i <= 6; i++)
+            for (var i = 2; i <= 6; i++)
             {
                 Console.WriteLine($"What is player {i}'s name?");
                 string nameInput = Console.ReadLine()?.ToLower();
@@ -58,11 +58,11 @@ namespace Santiago
             #endregion
 
             // Start game
-            Game game = new Game();
+            var game = new Game();
 
             Console.WriteLine("Who's turn it is?");
 
-            var inpPlayerTurn = Console.ReadLine()?.ToLower();
+            string inpPlayerTurn = Console.ReadLine()?.ToLower();
             while (!Players.Contains(inpPlayerTurn))
             {
                 Utility.Alert($"{inpPlayerTurn} is not a player! Please enter a valid player name.");
@@ -78,8 +78,6 @@ namespace Santiago
                     // Take in move made
                     Console.WriteLine($"{game.PlayerTurn}'s turn! What move did they make?");
                     var moveData = Console.ReadLine()?.Split(" ");
-
-
 
                     if (moveData?[0] == "call") // ["call", HalfSuit, Result]
                     {
@@ -122,6 +120,7 @@ namespace Santiago
                     else
                     {
                         Utility.Error("Invalid command! Calltype not recognized!");
+                        game.ExportAFN("testGame");
                     }
 
                 }
@@ -132,7 +131,7 @@ namespace Santiago
                     var AIMove = ai.MakeMove(game);
                     Utility.PrintCardCall(AIMove);
                     Console.WriteLine("Result of Santiago's move? Hit/Miss");
-                    var resString = Console.ReadLine()?.ToLower();
+                    string resString = Console.ReadLine()?.ToLower();
 
                     AIMove.Result = resString == "hit" ? CallResult.Hit : CallResult.Miss;
 

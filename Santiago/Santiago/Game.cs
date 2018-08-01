@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace Santiago
@@ -77,6 +79,40 @@ namespace Santiago
             moveList.Add(cc);
             if (cc.Result == CallResult.Miss)
                 PlayerTurn = cc.TargetName;
+        }
+
+        public void ExportAFN(string gameName)
+        {
+            string fileString = "";
+            for (int i = 0; i < moveList.Count; i++)
+            {
+                string data = "";
+                if (moveList[i].GetType() == typeof(SuitCall))
+                {
+                    SuitCall c = (SuitCall)moveList[i];
+                    data += c.SenderName + ";" + c.Team + ";" + c.HalfSuitName + ";";
+                    if (c.Result == CallResult.Hit) data += "hit";
+                    else if (c.Result == CallResult.Miss) data += "miss";
+                    else data += "unknown";
+
+                    fileString += data + Environment.NewLine;
+                }
+                else if (moveList[i].GetType() == typeof(CardCall))
+                {
+                    CardCall c = (CardCall)moveList[i];
+                    data += c.SenderName + ";" + c.TargetName + ";" + c.CardRequested + ";";
+                    if (c.Result == CallResult.Hit) data += "hit";
+                    else if (c.Result == CallResult.Miss) data += "miss";
+                    else data += "unknown";
+
+                    fileString += data + Environment.NewLine;
+                }
+            }
+
+            string path = gameName + ".afn";
+            if (!File.Exists(path)) File.Create(path);
+
+            File.WriteAllText(path, fileString);
         }
     }
 }

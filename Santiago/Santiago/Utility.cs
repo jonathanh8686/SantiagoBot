@@ -6,10 +6,21 @@ namespace Santiago
 {
     class Utility
     {
+        public static bool isDebug = true;
+
+        public static void Debug(string logMessage)
+        {
+            if (isDebug)
+            {
+                Console.WriteLine($"DEBUG - {DateTime.Now:T}: {logMessage}");
+                Console.ForegroundColor = ConsoleColor.White;
+            }
+        }
+
         public static void Log(string logMessage)
         {
-           Console.ForegroundColor = ConsoleColor.DarkGreen;
-           Console.WriteLine($"LOG - {DateTime.Now:T}: {logMessage}");
+            Console.ForegroundColor = ConsoleColor.DarkGreen;
+            Console.WriteLine($"LOG - {DateTime.Now:T}: {logMessage}");
             Console.ForegroundColor = ConsoleColor.White;
         }
 
@@ -37,6 +48,6 @@ namespace Santiago
             Console.WriteLine($"{cc.SenderName} called {cc.CardRequested} from {cc.TargetName} and it was a {strResult}");
             Console.ForegroundColor = ConsoleColor.White;
         }
-           
+
     }
 }
